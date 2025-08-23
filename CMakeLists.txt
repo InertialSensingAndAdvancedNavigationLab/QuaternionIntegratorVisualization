@@ -8,6 +8,7 @@ project(quaternion_integrator)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   geometry_msgs
   roscpp
   sensor_msgs
@@ -57,11 +58,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  SetBiasDrift.srv
+  SetAttitude.srv
+  SetLocation.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -71,10 +73,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   sensor_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+  sensor_msgs
+  quaternion_integrator
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -108,7 +112,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES quaternion_integrator
-  CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs tf2_ros tf2_geometry_msgs imu_algorithm_visualization
+  CATKIN_DEPENDS message_runtime geometry_msgs roscpp sensor_msgs tf2_ros tf2_geometry_msgs imu_algorithm_visualization
 #  DEPENDS system_lib
 )
 
@@ -121,16 +125,20 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${CATKIN_DEVEL_PREFIX}/include
 )
 
 add_executable(imu_corrector_node src/imu_corrector_node_main.cpp src/ImuCorrectorNode.cpp)
 target_link_libraries(imu_corrector_node ${catkin_LIBRARIES})
+add_dependencies(imu_corrector_node quaternion_integrator_generate_messages_cpp)
 
 add_executable(quaternion_integrator_node src/quaternion_integrator_node_main.cpp src/QuaternionIntegratorNode.cpp)
 target_link_libraries(quaternion_integrator_node ${catkin_LIBRARIES})
+add_dependencies(quaternion_integrator_node quaternion_integrator_generate_messages_cpp)
 
 add_executable(angular_velocity_to_quaternion_derivative_node src/angular_velocity_to_quaternion_derivative_node_main.cpp src/AngularVelocityToQuaternionDerivativeNode.cpp)
 target_link_libraries(angular_velocity_to_quaternion_derivative_node ${catkin_LIBRARIES})
+add_dependencies(angular_velocity_to_quaternion_derivative_node quaternion_integrator_generate_messages_cpp)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

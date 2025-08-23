@@ -14,7 +14,7 @@
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/QuaternionStamped.h>
 #include <geometry_msgs/PoseStamped.h>
-#include "IMUAlgorithmVisualization/SetAttitude.h"
+#include <quaternion_integrator/SetAttitude.h>
 
 /**
  * @brief quaternion_integrator 命名空间
@@ -77,8 +77,8 @@ private:
      * @retval      true 服务成功执行，内部姿态已更新。
      * @retval      false 服务执行失败。
      **/
-    bool setAttitude(IMUAlgorithmVisualization::SetAttitude::Request &req,
-                     IMUAlgorithmVisualization::SetAttitude::Response &res);
+    bool setAttitude(quaternion_integrator::SetAttitude::Request &req,
+                     quaternion_integrator::SetAttitude::Response &res);
 
     /// @brief ROS节点句柄：用于初始化节点、订阅和发布话题等
     ros::NodeHandle nh_;

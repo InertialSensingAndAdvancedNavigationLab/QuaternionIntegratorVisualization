@@ -1,0 +1,9 @@
+float64 angular_velocity_bias_x
+float64 angular_velocity_bias_y
+float64 angular_velocity_bias_z
+float64 angular_velocity_drift_x
+float64 angular_velocity_drift_y
+float64 angular_velocity_drift_z
+---
+bool success
+string message
