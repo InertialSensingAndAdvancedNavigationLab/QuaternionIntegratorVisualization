@@ -1,0 +1,12 @@
+<launch>
+  <!-- Load parameters for imu_corrector_node -->
+  <rosparam command="load" file="$(find quaternion_integrator)/config/imu_corrector_params.yaml" />
+
+  <!-- Start the imu_corrector_node -->
+  <node pkg="quaternion_integrator" type="imu_corrector_node" name="imu_corrector_node" output="screen" >
+    <remap from="/imu/data_raw" to="/imu0" />
+  </node>
+
+  <!-- Launch RViz with the specific configuration -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find quaternion_integrator)/rviz/imu_corrector.rviz" />
+</launch>

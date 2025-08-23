@@ -1,0 +1,14 @@
+# Parameters for imu_corrector_node
+imu_corrector_node:
+  ros__parameters:
+    input_imu_topic: "/imu/data_raw"
+    output_imu_topic: "/imu/data_corrected"
+    # Example correction parameters (adjust as needed)
+    # These are placeholders and will need to be refined based on actual IMU characteristics
+    angular_velocity_bias_x: 0.0
+    angular_velocity_bias_y: 0.0
+    angular_velocity_bias_z: 0.0
+    linear_acceleration_bias_x: 0.0
+    linear_acceleration_bias_y: 0.0
+    linear_acceleration_bias_z: 0.0
+    # Add more parameters as needed for filtering, calibration, etc.

@@ -1,0 +1,85 @@
+Displays:
+  - General:
+      Grid:
+        Alpha: 0.5
+        Color: 160; 160; 160
+        Plane: XY
+        Cell Size: 1
+        Line Width: 0.03
+      Axes:
+        Length: 1
+        Radius: 0.05
+  - TF:
+      Enabled: true
+      Show Arrows: true
+      Show Names: true
+      Show Axes: true
+      Frame Timeout: 15
+      Update Interval: 0
+  - Imu:
+      Topic: /imu/data_corrected
+      Color: 255; 0; 0
+      Alpha: 1
+      History Length: 1
+      Show Orientation: true
+      Show Angular Velocity: true
+      Show Linear Acceleration: true
+      Orientation Arrow Scale: 0.5
+      Angular Velocity Scale: 0.5
+      Linear Acceleration Scale: 0.5
+      Covariance: true
+      Queue Size: 10
+      Selectable: true
+      Style: Arrows
+      Name: Corrected IMU
+  - RPY:
+      Topic: /imu/rpy
+      Color: 0; 255; 0
+      Alpha: 1
+      History Length: 1
+      Show Vector: true
+      Vector Scale: 1.0
+      Name: RPY Vector
+  - Quaternion:
+      Topic: /imu/quaternion
+      Color: 0; 0; 255
+      Alpha: 1
+      History Length: 1
+      Show Arrow: true
+      Arrow Scale: 1.0
+      Name: Quaternion
+
+Global Options:
+  Fixed Frame: base_link
+  Background Color: 0; 0; 0
+
+Panels:
+  - Name: "rviz/Displays"
+    Type: "rviz/Displays"
+    X: 0
+    Y: 0
+    Width: 300
+    Height: 500
+  - Name: "rviz/Views"
+    Type: "rviz/Views"
+    X: 300
+    Y: 0
+    Width: 300
+    Height: 500
+
+Tools:
+  - Class: "rviz/Interact"
+    Hide Inactive: true
+  - Class: "rviz/MoveCamera"
+  - Class: "rviz/Select"
+  - Class: "rviz/FocusCamera"
+  - Class: "rviz/Measure"
+  - Class: "rviz/SetInitialPose"
+
+Views:
+  Current:
+    Class: "rviz/Orbit"
+    Distance: 5
+    Yaw: 0
+    Pitch: 0
+    Focal Point: 0; 0; 0
