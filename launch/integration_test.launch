@@ -18,10 +18,12 @@
 
     <!-- Static transform from our calculated base_link to the IMU data frame -->
     <node pkg="tf" type="static_transform_publisher" name="body_to_imu_broadcaster"
-          args="0 0 0 0 0 0 base_link imu0 100" />
+          args="0 0 0 0 0 0 ahrs_body imu0 100" />
 
     <!-- Start the quaternion_integrator nodes -->
-    <node pkg="quaternion_integrator" type="imu_corrector_node" name="imu_corrector_node" output="screen"/>
+    <node pkg="quaternion_integrator" type="imu_corrector_node" name="imu_corrector_node" output="screen">
+        <remap from="/imu/data_raw" to="/imu0"/>
+    </node>
     <node pkg="quaternion_integrator" type="angular_velocity_to_quaternion_derivative_node" name="angular_velocity_to_quaternion_derivative_node" output="screen"/>
     <node pkg="quaternion_integrator" type="quaternion_integrator_node" name="quaternion_integrator_node" output="screen"/>
     <node pkg="quaternion_integrator" type="pose_estimator_node" name="pose_estimator_node" output="screen"/>

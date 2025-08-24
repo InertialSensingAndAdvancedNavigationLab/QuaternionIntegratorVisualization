@@ -1,10 +1,8 @@
 #include "PoseEstimatorNode.hpp"
-#include <tf/transform_datatypes.h> 
-#include <tf/transform_broadcaster.h> 
 
 namespace quaternion_integrator {
 
-PoseEstimatorNode::PoseEstimatorNode(const ros::NodeHandle& nh) : nh_(nh) {
+PoseEstimatorNode::PoseEstimatorNode(const ros::NodeHandle& nh) : nh_(nh), tf_broadcaster_() {
     ros::NodeHandle nh_private("~");
     std::string quaternion_input_topic;
     nh_private.param<std::string>("quaternion_input_topic", quaternion_input_topic, "/imu/quaternion");
@@ -19,7 +17,7 @@ PoseEstimatorNode::PoseEstimatorNode(const ros::NodeHandle& nh) : nh_(nh) {
     nh_private.param<std::string>("rpy_output_topic", rpy_output_topic, "/imu/rpy");
 
     std::string marker_output_topic;
-    nh_private.param<std::string>("marker_output_topic", marker_output_topic, "/visualization/integrated_pose");
+    nh_private.param<std::string>("marker_output_topic", marker_output_topic, "/visualization/ahrs_drone");
 
     sub_integrated_quaternion_ = nh_.subscribe(quaternion_input_topic, 10, &PoseEstimatorNode::integratedQuaternionCallback, this);
     sub_corrected_imu_ = nh_.subscribe(imu_input_topic, 10, &PoseEstimatorNode::correctedImuCallback, this);
@@ -35,19 +33,16 @@ PoseEstimatorNode::PoseEstimatorNode(const ros::NodeHandle& nh) : nh_(nh) {
 void PoseEstimatorNode::integratedQuaternionCallback(const geometry_msgs::QuaternionStamped::ConstPtr& msg) {
     ROS_INFO_ONCE("[PoseEstimatorNode] First quaternion message received. Processing...");
 
-    latest_quaternion_ = msg->quaternion;
-    latest_quaternion_stamp_ = msg->header.stamp;
-
-    // -- Coordinate System Correction and TF/Pose Publishing --
-    tf::Quaternion tf_quat_original(latest_quaternion_.x, latest_quaternion_.y, latest_quaternion_.z, latest_quaternion_.w);
+    // -- Coordinate System Correction and TF/Pose Publishing using TF2 --
+    tf2::Quaternion tf_quat_original;
+    tf2::fromMsg(msg->quaternion, tf_quat_original);
 
     // Correction from URF (Up-Right-Forward) to FLU (Forward-Left-Up)
-    tf::Quaternion tf_quat_correction(0.70710678, 0.0, 0.70710678, 0.0);
-    tf::Quaternion tf_quat_final = tf_quat_original * tf_quat_correction;
+    tf2::Quaternion tf_quat_correction(0.70710678, 0.0, 0.70710678, 0.0);
+    tf2::Quaternion tf_quat_final = tf_quat_original * tf_quat_correction;
     tf_quat_final.normalize();
 
-    geometry_msgs::Quaternion final_orientation;
-    tf::quaternionTFToMsg(tf_quat_final, final_orientation);
+    geometry_msgs::Quaternion final_orientation = tf2::toMsg(tf_quat_final);
 
     // Publish PoseStamped
     ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Publishing /imu/pose...");
@@ -63,29 +58,33 @@ void PoseEstimatorNode::integratedQuaternionCallback(const geometry_msgs::Quater
     // Publish RPY
     ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Publishing /imu/rpy...");
     double roll, pitch, yaw;
-    tf::Matrix3x3(tf_quat_final).getRPY(roll, pitch, yaw);
+    tf2::Matrix3x3(tf_quat_final).getRPY(roll, pitch, yaw);
     geometry_msgs::Vector3Stamped rpy_msg;
     rpy_msg.header.stamp = msg->header.stamp;
-    rpy_msg.header.frame_id = "base_link";
+    rpy_msg.header.frame_id = "ahrs_body";
     rpy_msg.vector.x = roll;
     rpy_msg.vector.y = pitch;
     rpy_msg.vector.z = yaw;
     pub_rpy_.publish(rpy_msg);
 
-    // Broadcast TF transform
+    // Broadcast TF transform using TF2
     ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Broadcasting TF transform...");
-    tf::Transform transform;
-    transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
-    transform.setRotation(tf_quat_final);
-    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg->header.stamp, "world", "base_link"));
+    geometry_msgs::TransformStamped transform_stamped;
+    transform_stamped.header.stamp = msg->header.stamp;
+    transform_stamped.header.frame_id = "world";
+    transform_stamped.child_frame_id = "ahrs_body";
+    transform_stamped.transform.translation.x = 0.0;
+    transform_stamped.transform.translation.y = 0.0;
+    transform_stamped.transform.translation.z = 0.0;
+    transform_stamped.transform.rotation = final_orientation;
+    tf_broadcaster_.sendTransform(transform_stamped);
 
     // -- Visualization Marker Publishing --
     ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Publishing markers...");
-    // 3.1 Main Body (Disk) - Blue
     visualization_msgs::Marker body_disk;
-    body_disk.header.frame_id = "base_link";
+    body_disk.header.frame_id = "ahrs_body";
     body_disk.header.stamp = msg->header.stamp;
-    body_disk.ns = "integrated_drone";
+    body_disk.ns = "ahrs_drone_body";
     body_disk.id = 0;
     body_disk.type = visualization_msgs::Marker::CYLINDER;
     body_disk.action = visualization_msgs::Marker::ADD;
@@ -99,11 +98,10 @@ void PoseEstimatorNode::integratedQuaternionCallback(const geometry_msgs::Quater
     body_disk.color.b = 1.0; // Blue
     pub_marker_.publish(body_disk);
 
-    // 3.2 Downward Indicator (Cylinder)
     visualization_msgs::Marker down_cylinder;
-    down_cylinder.header.frame_id = "base_link";
+    down_cylinder.header.frame_id = "ahrs_body";
     down_cylinder.header.stamp = msg->header.stamp;
-    down_cylinder.ns = "integrated_drone";
+    down_cylinder.ns = "ahrs_drone_body";
     down_cylinder.id = 1;
     down_cylinder.type = visualization_msgs::Marker::CYLINDER;
     down_cylinder.action = visualization_msgs::Marker::ADD;
@@ -118,11 +116,10 @@ void PoseEstimatorNode::integratedQuaternionCallback(const geometry_msgs::Quater
     down_cylinder.color.b = 0.5;
     pub_marker_.publish(down_cylinder);
 
-    // 3.3 Forward Indicator (Arrow)
     visualization_msgs::Marker forward_arrow;
-    forward_arrow.header.frame_id = "base_link";
+    forward_arrow.header.frame_id = "ahrs_body";
     forward_arrow.header.stamp = msg->header.stamp;
-    forward_arrow.ns = "integrated_drone";
+    forward_arrow.ns = "ahrs_drone_body";
     forward_arrow.id = 2;
     forward_arrow.type = visualization_msgs::Marker::ARROW;
     forward_arrow.action = visualization_msgs::Marker::ADD;

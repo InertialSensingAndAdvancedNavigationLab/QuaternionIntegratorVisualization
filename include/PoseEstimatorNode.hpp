@@ -16,8 +16,10 @@
 #include <geometry_msgs/PoseStamped.h> // 发布最终姿态和位置
 #include <geometry_msgs/Vector3Stamped.h> // 发布RPY
 #include <visualization_msgs/Marker.h> // 为可视化新增
-#include <tf/transform_broadcaster.h> // 用于TF广播
-#include <tf/transform_datatypes.h> // 用于TF数据类型转换
+// TF2 Headers
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 /**
  * @brief quaternion_integrator 命名空间
@@ -88,7 +90,7 @@ private:
     ros::Publisher pub_marker_;
 
     /// @brief TF广播器：用于发布坐标变换
-    tf::TransformBroadcaster tf_broadcaster_;
+    tf2_ros::TransformBroadcaster tf_broadcaster_;
 
     /// @brief 存储最新的积分后四元数
     geometry_msgs::Quaternion latest_quaternion_;
