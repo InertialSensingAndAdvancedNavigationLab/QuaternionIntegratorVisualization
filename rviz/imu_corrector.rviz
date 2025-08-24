@@ -50,7 +50,7 @@ Displays:
       Name: Quaternion
 
 Global Options:
-  Fixed Frame: base_link
+  Fixed Frame: imu4
   Background Color: 0; 0; 0
 
 Panels:

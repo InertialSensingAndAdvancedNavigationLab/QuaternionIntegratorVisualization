@@ -15,6 +15,8 @@
 #include <sensor_msgs/Imu.h> // 订阅校正后的IMU数据（用于加速度）
 #include <geometry_msgs/PoseStamped.h> // 发布最终姿态和位置
 #include <geometry_msgs/Vector3Stamped.h> // 发布RPY
+#include <tf/transform_broadcaster.h> // 用于TF广播
+#include <tf/transform_datatypes.h> // 用于TF数据类型转换
 
 /**
  * @brief quaternion_integrator 命名空间
@@ -80,6 +82,16 @@ private:
     ros::Publisher pub_pose_;
     /// @brief RPY发布者：发布姿态的欧拉角表示
     ros::Publisher pub_rpy_;
+
+    /// @brief TF广播器：用于发布坐标变换
+    tf::TransformBroadcaster tf_broadcaster_;
+
+    /// @brief 存储最新的积分后四元数
+    geometry_msgs::Quaternion latest_quaternion_;
+    /// @brief 存储最新的积分后四元数的时间戳
+    ros::Time latest_quaternion_stamp_;
+    /// @brief 存储最新的校正后IMU数据
+    sensor_msgs::Imu latest_imu_;
 
     // TODO: 添加内部状态变量，例如用于融合的姿态、位置、速度等
 };

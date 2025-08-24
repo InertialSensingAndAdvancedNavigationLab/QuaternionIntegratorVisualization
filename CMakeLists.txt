@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
   sensor_msgs
+  tf
   tf2_ros
   tf2_geometry_msgs
   imu_algorithm_visualization
