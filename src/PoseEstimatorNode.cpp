@@ -93,9 +93,9 @@ void PoseEstimatorNode::integratedQuaternionCallback(const geometry_msgs::Quater
     body_disk.scale.y = 0.8;
     body_disk.scale.z = 0.02;
     body_disk.color.a = 0.7;
-    body_disk.color.r = 0.2;
-    body_disk.color.g = 0.4;
-    body_disk.color.b = 1.0; // Blue
+    body_disk.color.r = 0.8; 
+    body_disk.color.g = 0.8; 
+    body_disk.color.b = 0.8; // Gray
     pub_marker_.publish(body_disk);
 
     visualization_msgs::Marker down_cylinder;
