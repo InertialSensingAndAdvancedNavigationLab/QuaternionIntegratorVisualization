@@ -16,20 +16,29 @@ graph TD
         A[rosbag play MH_04_difficult.bag] -- "/imu0 (sensor_msgs/Imu)" --> B(ImuCorrectorNode);
     end
 
-    subgraph "IMU 数据处理与四元数积分"
+    subgraph "IMU 数据处理"
         B -- "/imu/data_corrected (sensor_msgs/Imu)" --> C(AngularVelocityToQuaternionDerivativeNode);
-        C -- "/imu/quaternion_derivative (geometry_msgs/Vector4)" --> D(QuaternionIntegratorNode);
     end
 
-    subgraph "输出与可视化"
-        D -- "/imu/quaternion (geometry_msgs/QuaternionStamped)" --> E[RViz];
-        D -- "/imu/rpy (geometry_msgs/Vector3Stamped)" --> E;
+    subgraph "四元数积分"
+        C -- "/imu/quaternion_derivative (geometry_msgs/Quaternion)" --> D(QuaternionIntegratorNode);
+    end
+
+    subgraph "姿态估计与融合"
+        D -- "/imu/quaternion (geometry_msgs/QuaternionStamped)" --> F(PoseEstimatorNode);
+        B -- "/imu/data_corrected (sensor_msgs/Imu)" --> F;
+    end
+
+    subgraph "最终输出与可视化"
+        F -- "/imu/pose (geometry_msgs/PoseStamped)" --> E[RViz];
+        F -- "/imu/rpy (geometry_msgs/Vector3Stamped)" --> E;
     end
 ```
 *   **ImuCorrectorNode:** 订阅原始 IMU 数据 (`/imu0`)，进行校正和预处理，并发布校正后的 IMU 数据 (`/imu/data_corrected`)。
 *   **AngularVelocityToQuaternionDerivativeNode:** 订阅校正后的 IMU 数据 (`/imu/data_corrected`)，计算角速度对应的四元数导数，并发布 `/imu/quaternion_derivative`。
-*   **QuaternionIntegratorNode:** 订阅四元数导数 (`/imu/quaternion_derivative`)，执行四元数积分，并发布最终的姿态四元数 (`/imu/quaternion`) 和欧拉角 (`/imu/rpy`)。
-*   **RViz:** 用于可视化 `QuaternionIntegratorNode` 输出的四元数和欧拉角。
+*   **QuaternionIntegratorNode:** 订阅四元数导数 (`/imu/quaternion_derivative`)，执行四元数积分，并发布积分后的姿态四元数 (`/imu/quaternion`)。
+*   **PoseEstimatorNode:** 订阅积分后的姿态四元数 (`/imu/quaternion`) 和校正后的 IMU 数据 (`/imu/data_corrected`)。该节点将融合这些信息（例如，通过互补滤波）来估计最终的姿态和位置，并发布 `/imu/pose` 和 `/imu/rpy`。
+*   **RViz:** 用于可视化 `PoseEstimatorNode` 输出的姿态和欧拉角。
 
 ## 节点详情与 API (输入/输出)
 
