@@ -15,6 +15,7 @@
 #include <sensor_msgs/Imu.h> // 订阅校正后的IMU数据（用于加速度）
 #include <geometry_msgs/PoseStamped.h> // 发布最终姿态和位置
 #include <geometry_msgs/Vector3Stamped.h> // 发布RPY
+#include <visualization_msgs/Marker.h> // 为可视化新增
 #include <tf/transform_broadcaster.h> // 用于TF广播
 #include <tf/transform_datatypes.h> // 用于TF数据类型转换
 
@@ -33,6 +34,7 @@ namespace quaternion_integrator {
  *          3. 融合这些数据以估计更精确的姿态和位置。
  *          4. 将估计的姿态和位置作为 `geometry_msgs::PoseStamped` 发布。
  *          5. 将姿态转换为欧拉角（RPY）并作为 `geometry_msgs::Vector3Stamped` 发布。
+ *          6. 发布一个 `visualization_msgs::Marker` 消息用于在RViz中可视化。
  **/
 class PoseEstimatorNode {
 public:
@@ -82,6 +84,8 @@ private:
     ros::Publisher pub_pose_;
     /// @brief RPY发布者：发布姿态的欧拉角表示
     ros::Publisher pub_rpy_;
+    /// @brief Marker发布者：用于在RViz中进行可视化
+    ros::Publisher pub_marker_;
 
     /// @brief TF广播器：用于发布坐标变换
     tf::TransformBroadcaster tf_broadcaster_;

@@ -1,0 +1,33 @@
+<launch>
+    <!-- Set use_sim_time for the entire ROS system -->
+    <param name="use_sim_time" value="true"/>
+
+    <!-- Bag file paths -->
+    <arg name="sensor_bag"      default="/path/to/your/MH_04_difficult.bag" />
+    <arg name="groundtruth_bag" default="/path/to/your/MH_04_difficult_true.bag" />
+
+    <!-- Play the rosbags -->
+    <node pkg="rosbag" type="play" name="sensor_player" output="screen" required="true" args="--clock $(arg sensor_bag)"/>
+    <node pkg="rosbag" type="play" name="groundtruth_player" output="screen" required="true"
+          args="$(arg groundtruth_bag)"/>
+
+    <!-- ================================================================================= -->
+    <!-- DIAGNOSTIC STEP: Launch the known-good ground_truth_visualizer to provide a stable 'world' frame -->
+    <node pkg="imu_algorithm_visualization" type="ground_truth_visualizer_node" name="ground_truth_visualizer_node" output="screen"/>
+    <!-- ================================================================================= -->
+
+    <!-- Static transform from our calculated base_link to the IMU data frame -->
+    <node pkg="tf" type="static_transform_publisher" name="body_to_imu_broadcaster"
+          args="0 0 0 0 0 0 base_link imu0 100" />
+
+    <!-- Start the quaternion_integrator nodes -->
+    <node pkg="quaternion_integrator" type="imu_corrector_node" name="imu_corrector_node" output="screen"/>
+    <node pkg="quaternion_integrator" type="angular_velocity_to_quaternion_derivative_node" name="angular_velocity_to_quaternion_derivative_node" output="screen"/>
+    <node pkg="quaternion_integrator" type="quaternion_integrator_node" name="quaternion_integrator_node" output="screen"/>
+    <node pkg="quaternion_integrator" type="pose_estimator_node" name="pose_estimator_node" output="screen"/>
+
+    <!-- Start RViz with a pre-configured file -->
+    <!-- We use ahrs_comparison.rviz now because it's already configured to see both drones -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find imu_algorithm_visualization)/rviz/ahrs_comparison.rviz" />
+
+</launch>

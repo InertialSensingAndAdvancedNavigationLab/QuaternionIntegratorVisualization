@@ -1,85 +1,146 @@
 #include "PoseEstimatorNode.hpp"
-#include <tf/transform_datatypes.h> // For tf::createQuaternionMsgFromYaw and tf::getYaw
-#include <tf/transform_broadcaster.h> // For broadcasting TF
+#include <tf/transform_datatypes.h> 
+#include <tf/transform_broadcaster.h> 
 
 namespace quaternion_integrator {
 
-/// @brief 构造函数实现
 PoseEstimatorNode::PoseEstimatorNode(const ros::NodeHandle& nh) : nh_(nh) {
-    /// 从参数服务器获取输入话题名称：积分后的四元数
+    ros::NodeHandle nh_private("~");
     std::string quaternion_input_topic;
-    nh_.param<std::string>("~quaternion_input_topic", quaternion_input_topic, "/imu/quaternion");
+    nh_private.param<std::string>("quaternion_input_topic", quaternion_input_topic, "/imu/quaternion");
 
-    /// 从参数服务器获取输入话题名称：校正后的IMU数据
     std::string imu_input_topic;
-    nh_.param<std::string>("~imu_input_topic", imu_input_topic, "/imu/data_corrected");
+    nh_private.param<std::string>("imu_input_topic", imu_input_topic, "/imu/data_corrected");
 
-    /// 从参数服务器获取输出话题名称：最终姿态
     std::string pose_output_topic;
-    nh_.param<std::string>("~pose_output_topic", pose_output_topic, "/imu/pose");
+    nh_private.param<std::string>("pose_output_topic", pose_output_topic, "/imu/pose");
 
-    /// 从参数服务器获取输出话题名称：RPY欧拉角
     std::string rpy_output_topic;
-    nh_.param<std::string>("~rpy_output_topic", rpy_output_topic, "/imu/rpy");
+    nh_private.param<std::string>("rpy_output_topic", rpy_output_topic, "/imu/rpy");
 
-    /// 初始化订阅者
+    std::string marker_output_topic;
+    nh_private.param<std::string>("marker_output_topic", marker_output_topic, "/visualization/integrated_pose");
+
     sub_integrated_quaternion_ = nh_.subscribe(quaternion_input_topic, 10, &PoseEstimatorNode::integratedQuaternionCallback, this);
     sub_corrected_imu_ = nh_.subscribe(imu_input_topic, 10, &PoseEstimatorNode::correctedImuCallback, this);
 
-    /// 初始化发布者
-    pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>(pose_output_topic, 10);
+    pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>(pose_output_topic, 10, true);
     pub_rpy_ = nh_.advertise<geometry_msgs::Vector3Stamped>(rpy_output_topic, 10);
+    pub_marker_ = nh_.advertise<visualization_msgs::Marker>(marker_output_topic, 10, true);
 
-    ROS_INFO("[PoseEstimatorNode] Node initialized. Subscribing to %s and %s, publishing to %s and %s",
-             quaternion_input_topic.c_str(), imu_input_topic.c_str(), pose_output_topic.c_str(), rpy_output_topic.c_str());
+    ROS_INFO("[PoseEstimatorNode] Node initialized. Subscribing to %s and %s, publishing to %s, %s, and %s",
+             quaternion_input_topic.c_str(), imu_input_topic.c_str(), pose_output_topic.c_str(), rpy_output_topic.c_str(), marker_output_topic.c_str());
 }
 
-/// @brief 积分后四元数的回调函数实现
 void PoseEstimatorNode::integratedQuaternionCallback(const geometry_msgs::QuaternionStamped::ConstPtr& msg) {
-    /// 存储最新的积分四元数
+    ROS_INFO_ONCE("[PoseEstimatorNode] First quaternion message received. Processing...");
+
     latest_quaternion_ = msg->quaternion;
     latest_quaternion_stamp_ = msg->header.stamp;
 
-    /// TODO: 在这里可以加入更复杂的融合逻辑，例如与加速度计的互补滤波
-    /// 目前，我们仅将四元数转换为姿态和RPY并发布
+    // -- Coordinate System Correction and TF/Pose Publishing --
+    tf::Quaternion tf_quat_original(latest_quaternion_.x, latest_quaternion_.y, latest_quaternion_.z, latest_quaternion_.w);
 
-    /// 发布姿态 (PoseStamped)
+    // Correction from URF (Up-Right-Forward) to FLU (Forward-Left-Up)
+    tf::Quaternion tf_quat_correction(0.70710678, 0.0, 0.70710678, 0.0);
+    tf::Quaternion tf_quat_final = tf_quat_original * tf_quat_correction;
+    tf_quat_final.normalize();
+
+    geometry_msgs::Quaternion final_orientation;
+    tf::quaternionTFToMsg(tf_quat_final, final_orientation);
+
+    // Publish PoseStamped
+    ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Publishing /imu/pose...");
     geometry_msgs::PoseStamped pose_msg;
     pose_msg.header.stamp = msg->header.stamp;
-    pose_msg.header.frame_id = "odom"; // 可以通过参数配置，或者使用世界坐标系
-    pose_msg.pose.orientation = latest_quaternion_;
-    pose_msg.pose.position.x = 0.0; // 暂时假设位置为原点
+    pose_msg.header.frame_id = "world";
+    pose_msg.pose.orientation = final_orientation;
+    pose_msg.pose.position.x = 0.0;
     pose_msg.pose.position.y = 0.0;
     pose_msg.pose.position.z = 0.0;
     pub_pose_.publish(pose_msg);
 
-    /// 将四元数转换为RPY (Roll, Pitch, Yaw)
-    tf::Quaternion tf_quat(latest_quaternion_.x, latest_quaternion_.y, latest_quaternion_.z, latest_quaternion_.w);
-    tf::Matrix3x3 m(tf_quat);
+    // Publish RPY
+    ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Publishing /imu/rpy...");
     double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-
+    tf::Matrix3x3(tf_quat_final).getRPY(roll, pitch, yaw);
     geometry_msgs::Vector3Stamped rpy_msg;
     rpy_msg.header.stamp = msg->header.stamp;
-    rpy_msg.header.frame_id = "base_link"; // RPY通常相对于机器人本体
+    rpy_msg.header.frame_id = "base_link";
     rpy_msg.vector.x = roll;
     rpy_msg.vector.y = pitch;
     rpy_msg.vector.z = yaw;
     pub_rpy_.publish(rpy_msg);
 
-    /// 广播TF变换 (odom -> base_link)
+    // Broadcast TF transform
+    ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Broadcasting TF transform...");
     tf::Transform transform;
-    transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0)); // 暂时假设位置为原点
-    transform.setRotation(tf_quat);
-    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg->header.stamp, "odom", "base_link"));
+    transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+    transform.setRotation(tf_quat_final);
+    tf_broadcaster_.sendTransform(tf::StampedTransform(transform, msg->header.stamp, "world", "base_link"));
+
+    // -- Visualization Marker Publishing --
+    ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] Publishing markers...");
+    // 3.1 Main Body (Disk) - Blue
+    visualization_msgs::Marker body_disk;
+    body_disk.header.frame_id = "base_link";
+    body_disk.header.stamp = msg->header.stamp;
+    body_disk.ns = "integrated_drone";
+    body_disk.id = 0;
+    body_disk.type = visualization_msgs::Marker::CYLINDER;
+    body_disk.action = visualization_msgs::Marker::ADD;
+    body_disk.pose.orientation.w = 1.0;
+    body_disk.scale.x = 0.8;
+    body_disk.scale.y = 0.8;
+    body_disk.scale.z = 0.02;
+    body_disk.color.a = 0.7;
+    body_disk.color.r = 0.2;
+    body_disk.color.g = 0.4;
+    body_disk.color.b = 1.0; // Blue
+    pub_marker_.publish(body_disk);
+
+    // 3.2 Downward Indicator (Cylinder)
+    visualization_msgs::Marker down_cylinder;
+    down_cylinder.header.frame_id = "base_link";
+    down_cylinder.header.stamp = msg->header.stamp;
+    down_cylinder.ns = "integrated_drone";
+    down_cylinder.id = 1;
+    down_cylinder.type = visualization_msgs::Marker::CYLINDER;
+    down_cylinder.action = visualization_msgs::Marker::ADD;
+    down_cylinder.pose.position.z = -0.11;
+    down_cylinder.pose.orientation.w = 1.0;
+    down_cylinder.scale.x = 0.05;
+    down_cylinder.scale.y = 0.05;
+    down_cylinder.scale.z = 0.2;
+    down_cylinder.color.a = 0.9;
+    down_cylinder.color.r = 0.5;
+    down_cylinder.color.g = 0.5;
+    down_cylinder.color.b = 0.5;
+    pub_marker_.publish(down_cylinder);
+
+    // 3.3 Forward Indicator (Arrow)
+    visualization_msgs::Marker forward_arrow;
+    forward_arrow.header.frame_id = "base_link";
+    forward_arrow.header.stamp = msg->header.stamp;
+    forward_arrow.ns = "integrated_drone";
+    forward_arrow.id = 2;
+    forward_arrow.type = visualization_msgs::Marker::ARROW;
+    forward_arrow.action = visualization_msgs::Marker::ADD;
+    forward_arrow.pose.position.z = -0.11;
+    forward_arrow.pose.orientation.w = 1.0;
+    forward_arrow.scale.x = 0.4;
+    forward_arrow.scale.y = 0.05;
+    forward_arrow.scale.z = 0.05;
+    forward_arrow.color.a = 1.0;
+    forward_arrow.color.r = 1.0;
+    forward_arrow.color.g = 0.0;
+    forward_arrow.color.b = 0.0;
+    pub_marker_.publish(forward_arrow);
+    ROS_INFO_THROTTLE(1.0, "[PoseEstimatorNode] All publications in callback are done.");
 }
 
-/// @brief 校正后IMU数据的回调函数实现
 void PoseEstimatorNode::correctedImuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
-    /// 存储最新的校正后IMU数据
     latest_imu_ = *msg;
-    /// TODO: 在这里可以加入使用加速度计数据进行姿态修正的逻辑
-    /// 例如，通过互补滤波或卡尔曼滤波来融合陀螺仪和加速度计数据
 }
 
 } // namespace quaternion_integrator

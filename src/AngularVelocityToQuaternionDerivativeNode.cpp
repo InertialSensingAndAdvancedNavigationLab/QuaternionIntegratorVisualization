@@ -5,13 +5,14 @@ namespace quaternion_integrator {
 
 /// @brief 构造函数实现
 AngularVelocityToQuaternionDerivativeNode::AngularVelocityToQuaternionDerivativeNode(const ros::NodeHandle& nh) : nh_(nh) {
+    ros::NodeHandle nh_private("~");
     /// 从参数服务器获取输入话题名称，默认为 "/imu/data_corrected"
     std::string imu_input_topic;
-    nh_.param<std::string>("~imu_input_topic", imu_input_topic, "/imu/data_corrected");
+    nh_private.param<std::string>("imu_input_topic", imu_input_topic, "/imu/data_corrected");
 
     /// 从参数服务器获取输出话题名称，默认为 "/imu/quaternion_derivative"
     std::string quaternion_derivative_output_topic;
-    nh_.param<std::string>("~quaternion_derivative_output_topic", quaternion_derivative_output_topic, "/imu/quaternion_derivative");
+    nh_private.param<std::string>("quaternion_derivative_output_topic", quaternion_derivative_output_topic, "/imu/quaternion_derivative");
 
     /// 初始化订阅者，订阅IMU输入话题
     sub_angular_velocity_ = nh_.subscribe(imu_input_topic, 10, &AngularVelocityToQuaternionDerivativeNode::angularVelocityCallback, this);

@@ -6,13 +6,14 @@ namespace quaternion_integrator {
 
 /// @brief 构造函数实现
 QuaternionIntegratorNode::QuaternionIntegratorNode(const ros::NodeHandle& nh) : nh_(nh) {
+    ros::NodeHandle nh_private("~");
     /// 从参数服务器获取输入话题名称，默认为 "/imu/quaternion_derivative"
     std::string quaternion_derivative_input_topic;
-    nh_.param<std::string>("~quaternion_derivative_input_topic", quaternion_derivative_input_topic, "/imu/quaternion_derivative");
+    nh_private.param<std::string>("quaternion_derivative_input_topic", quaternion_derivative_input_topic, "/imu/quaternion_derivative");
 
     /// 从参数服务器获取输出话题名称，默认为 "/imu/quaternion"
     std::string quaternion_output_topic;
-    nh_.param<std::string>("~quaternion_output_topic", quaternion_output_topic, "/imu/quaternion");
+    nh_private.param<std::string>("quaternion_output_topic", quaternion_output_topic, "/imu/quaternion");
 
     /// 初始化订阅者，订阅四元数微分话题
     sub_quaternion_derivative_ = nh_.subscribe(quaternion_derivative_input_topic, 10, &QuaternionIntegratorNode::imuProcessedCallback, this);
