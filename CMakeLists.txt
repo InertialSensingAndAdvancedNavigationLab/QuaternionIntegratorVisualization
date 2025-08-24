@@ -140,6 +140,10 @@ add_executable(angular_velocity_to_quaternion_derivative_node src/angular_veloci
 target_link_libraries(angular_velocity_to_quaternion_derivative_node ${catkin_LIBRARIES})
 add_dependencies(angular_velocity_to_quaternion_derivative_node quaternion_integrator_generate_messages_cpp)
 
+add_executable(pose_estimator_node src/pose_estimator_node_main.cpp src/PoseEstimatorNode.cpp)
+target_link_libraries(pose_estimator_node ${catkin_LIBRARIES})
+add_dependencies(pose_estimator_node quaternion_integrator_generate_messages_cpp)
+
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/ahrs_algorithms.cpp

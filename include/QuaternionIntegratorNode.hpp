@@ -11,9 +11,8 @@
 #define QUATERNION_INTEGRATOR_QUATERNION_INTEGRATOR_NODE_HPP
 
 #include <ros/ros.h>
-#include <sensor_msgs/Imu.h>
-#include <geometry_msgs/QuaternionStamped.h>
-#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Quaternion.h> // 用于订阅四元数微分
+#include <geometry_msgs/QuaternionStamped.h> // 用于发布积分后的四元数
 #include <quaternion_integrator/SetAttitude.h>
 
 /**
@@ -26,12 +25,10 @@ namespace quaternion_integrator {
  * @class QuaternionIntegratorNode
  * @brief 通过积分角速度来计算并发布姿态的ROS节点类。
  * @details 该节点执行以下操作：
- *          1. 订阅来自 `ImuCorrectorNode` 的、经过校正的IMU数据。
- *          2. 在每次接收到数据时，使用一阶积分法（或更高级的方法）
- *             根据角速度和时间增量来更新内部的姿态四元数。
+ *          1. 订阅来自 `AngularVelocityToQuaternionDerivativeNode` 的四元数微分。
+ *          2. 在每次接收到数据时，使用积分法更新内部的姿态四元数。
  *          3. 将更新后的姿态作为 `geometry_msgs::QuaternionStamped` 发布。
- *          4. 将姿态和固定的位置组合成 `geometry_msgs::PoseStamped` 并发布。
- *          5. 提供一个 `set_attitude` 服务，允许外部节点设置或重置积分器的初始姿态。
+ *          4. 提供一个 `set_attitude` 服务，允许外部节点设置或重置积分器的初始姿态。
  **/
 class QuaternionIntegratorNode {
 public:
@@ -53,15 +50,15 @@ public:
 
 private:
     /**
-     * @brief       处理后IMU数据的回调函数
-     * @details     这是节点的核心处理函数。当接收到校正后的IMU数据时，
-     *              它计算自上次更新以来的时间差（dt），然后使用角速度
-     *              更新姿态四元数。最后，发布新的姿态和位姿。
+     * @brief       四元数微分数据的回调函数
+     * @details     这是节点的核心处理函数。当接收到四元数微分数据时，
+     *              它计算自上次更新以来的时间差（dt），然后使用四元数微分
+     *              更新姿态四元数。最后，发布新的姿态。
      *
-     * @param       msg                             数据类型: const sensor_msgs::Imu::ConstPtr&
-     * @details     指向接收到的IMU消息的常量共享指针。
+     * @param       msg                             数据类型: const geometry_msgs::Quaternion::ConstPtr&
+     * @details     指向接收到的四元数微分消息的常量共享指针。
      **/
-    void imuProcessedCallback(const sensor_msgs::Imu::ConstPtr& msg);
+    void imuProcessedCallback(const geometry_msgs::Quaternion::ConstPtr& msg);
 
     /**
      * @brief       设置初始姿态的服务回调函数
@@ -82,19 +79,15 @@ private:
 
     /// @brief ROS节点句柄：用于初始化节点、订阅和发布话题等
     ros::NodeHandle nh_;
-    /// @brief 处理后IMU数据订阅者：订阅来自ImuCorrectorNode的校正后数据
-    ros::Subscriber sub_imu_processed_;
-    /// @brief 姿态发布者：发布纯姿态信息（QuaternionStamped）
+    /// @brief 四元数微分订阅者：订阅来自AngularVelocityToQuaternionDerivativeNode的四元数微分
+    ros::Subscriber sub_quaternion_derivative_;
+    /// @brief 姿态发布者：发布积分后的纯姿态信息（QuaternionStamped）
     ros::Publisher pub_orientation_;
-    /// @brief 位姿发布者：发布包含姿态和位置的完整位姿信息（PoseStamped）
-    ros::Publisher pub_pose_;
     /// @brief 设置姿态的服务服务器：允许外部节点重置积分器的姿态
     ros::ServiceServer srv_set_attitude_;
 
     /// @brief 当前的姿态四元数：存储和更新节点估计的姿态
     geometry_msgs::Quaternion orientation_;
-    /// @brief 当前的位置：在此节点中假定为固定原点 (0,0,0)
-    geometry_msgs::Point position_;
     /// @brief 上次更新时间：用于计算积分时间步长 (dt)
     ros::Time last_update_time_;
 };
