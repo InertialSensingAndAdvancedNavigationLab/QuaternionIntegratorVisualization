@@ -13,35 +13,23 @@
 ```mermaid
 graph TD
     subgraph "数据源"
-        A[IMU 传感器] -- /imu/raw --> B(IMU 预处理器节点)
+        A[rosbag play MH_04_difficult.bag] -- "/imu0 (sensor_msgs/Imu)" --> B(ImuCorrectorNode);
     end
 
-    subgraph "核心处理流水线"
-        B -- "/imu/processed (组合消息)" --> C(四元数积分器节点)
-        B -- "/imu/processed_angular_velocity (分解消息)" --> Z((其他下游节点))
+    subgraph "IMU 数据处理与四元数积分"
+        B -- "/imu/data_corrected (sensor_msgs/Imu)" --> C(AngularVelocityToQuaternionDerivativeNode);
+        C -- "/imu/quaternion_derivative (geometry_msgs/Vector4)" --> D(QuaternionIntegratorNode);
     end
 
-    subgraph "可视化与分析"
-        C -- "/ahrs/pose (位姿)" --> D(可视化与分析节点)
-        B -- "/imu/processed" --> D
-        D -- TF & 可视化标记 & 轨迹 --> E[RViz]
-        B -- 原始/处理后数据 & 参数 --> F[rqt_plot]
-    end
-
-    subgraph "逻辑输出"
-        C -- "/ahrs/orientation (纯姿态)" --> Y((其他逻辑节点))
-    end
-
-    subgraph "服务调用"
-        G[用户] -- 设置零偏/漂移 --> B
-        H[用户] -- 请求误差分析 --> D
-        I[用户] -- 设置初始姿态 --> C
+    subgraph "输出与可视化"
+        D -- "/imu/quaternion (geometry_msgs/QuaternionStamped)" --> E[RViz];
+        D -- "/imu/rpy (geometry_msgs/Vector3Stamped)" --> E;
     end
 ```
-*   **IMU 预处理器节点:** 订阅原始数据，进行预处理。它发布一个完整的 `/imu/processed` (`sensor_msgs/Imu`) 消息，并为需要更具体数据的下游节点额外发布分解后的 `/imu/processed_angular_velocity` 和 `/imu/processed_linear_acceleration` 话题。
-*   **四元数积分器节点:** 订阅 `/imu/processed`。它的核心输出是纯净的姿态信息 `/ahrs/orientation` (`geometry_msgs/QuaternionStamped`)。同时，为了方便 RViz 等工具直接使用，它也发布一个包含姿态和（漂移的）位置的 `/ahrs/pose` (`geometry_msgs/PoseStamped`) 话题。
-*   **可视化与分析节点:** 订阅 `/ahrs/pose` 和 `/imu/processed`，将其转换为丰富的 RViz 可视化元素。
-*   **RViz & rqt_plot:** 最终的可视化工具。`rqt_plot` 用于二维图表分析，`RViz` 用于三维空间状态呈现。
+*   **ImuCorrectorNode:** 订阅原始 IMU 数据 (`/imu0`)，进行校正和预处理，并发布校正后的 IMU 数据 (`/imu/data_corrected`)。
+*   **AngularVelocityToQuaternionDerivativeNode:** 订阅校正后的 IMU 数据 (`/imu/data_corrected`)，计算角速度对应的四元数导数，并发布 `/imu/quaternion_derivative`。
+*   **QuaternionIntegratorNode:** 订阅四元数导数 (`/imu/quaternion_derivative`)，执行四元数积分，并发布最终的姿态四元数 (`/imu/quaternion`) 和欧拉角 (`/imu/rpy`)。
+*   **RViz:** 用于可视化 `QuaternionIntegratorNode` 输出的四元数和欧拉角。
 
 ## 节点详情与 API (输入/输出)
 
