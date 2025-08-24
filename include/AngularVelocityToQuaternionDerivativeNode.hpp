@@ -11,7 +11,7 @@
 #define QUATERNION_INTEGRATOR_ANGULAR_VELOCITY_TO_QUATERNION_DERIVATIVE_NODE_HPP
 
 #include <ros/ros.h>
-#include <geometry_msgs/Vector3Stamped.h>
+#include <sensor_msgs/Imu.h> // 更改为Imu消息类型
 #include <geometry_msgs/Quaternion.h>
 
 /**
@@ -49,16 +49,16 @@ public:
 private:
     /**
      * @brief       角速度消息的回调函数
-     * @details     当接收到新的角速度消息时，此函数被调用。
-     *              它执行从角速度到四元数微分的转换，并发布结果。
+     * @details     当接收到新的IMU消息时，此函数被调用。
+     *              它从IMU消息中提取角速度，执行从角速度到四元数微分的转换，并发布结果。
      * @warning     此实现假设当前的姿态四元数是单位四元数 [1, 0, 0, 0]，
      *              这在很多从静止开始的简单场景下是有效的。
      *              对于更复杂的场景，需要一个完整的姿态积分器来提供当前姿态。
      *
-     * @param       msg                             数据类型: const geometry_msgs::Vector3Stamped::ConstPtr&
-     * @details     指向接收到的角速度消息的常量共享指针。
+     * @param       msg                             数据类型: const sensor_msgs::Imu::ConstPtr&
+     * @details     指向接收到的IMU消息的常量共享指针，其中包含角速度。
      **/
-    void angularVelocityCallback(const geometry_msgs::Vector3Stamped::ConstPtr& msg);
+    void angularVelocityCallback(const sensor_msgs::Imu::ConstPtr& msg);
 
     /// @brief ROS节点句柄：用于初始化节点、订阅和发布话题等
     ros::NodeHandle nh_;
