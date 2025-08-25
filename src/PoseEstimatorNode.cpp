@@ -62,7 +62,7 @@ void PoseEstimatorNode::publishTfCallback(const ros::TimerEvent& event) {
     tf2::fromMsg(latest_integrated_quaternion_msg_.quaternion, tf_quat_original);
 
     // Correction from URF (Up-Right-Forward) to FLU (Forward-Left-Up)
-    tf2::Quaternion tf_quat_correction(0.0, 0.0, 0.70710678, 0.70710678); // Z-axis +90 deg rotation
+    tf2::Quaternion tf_quat_correction(0.0, 0.0, 1.0, 0.0); // Z-axis +180 deg rotation (composition of Z+90 and Z+90)
 
     tf2::Quaternion tf_quat_final = tf_quat_original * tf_quat_correction;
     tf_quat_final.normalize();
