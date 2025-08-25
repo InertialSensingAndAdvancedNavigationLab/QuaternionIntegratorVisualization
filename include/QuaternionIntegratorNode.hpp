@@ -11,8 +11,7 @@
 #define QUATERNION_INTEGRATOR_QUATERNION_INTEGRATOR_NODE_HPP
 
 #include <ros/ros.h>
-#include <geometry_msgs/Quaternion.h> // 用于订阅四元数微分
-#include <geometry_msgs/QuaternionStamped.h> // 用于发布积分后的四元数
+#include <geometry_msgs/QuaternionStamped.h> // 用于订阅四元数微分
 #include <quaternion_integrator/SetAttitude.h>
 
 /**
@@ -55,10 +54,10 @@ private:
      *              它计算自上次更新以来的时间差（dt），然后使用四元数微分
      *              更新姿态四元数。最后，发布新的姿态。
      *
-     * @param       msg                             数据类型: const geometry_msgs::Quaternion::ConstPtr&
+     * @param       msg                             数据类型: const geometry_msgs::QuaternionStamped::ConstPtr&
      * @details     指向接收到的四元数微分消息的常量共享指针。
      **/
-    void imuProcessedCallback(const geometry_msgs::Quaternion::ConstPtr& msg);
+    void imuProcessedCallback(const geometry_msgs::QuaternionStamped::ConstPtr& msg);
 
     /**
      * @brief       设置初始姿态的服务回调函数

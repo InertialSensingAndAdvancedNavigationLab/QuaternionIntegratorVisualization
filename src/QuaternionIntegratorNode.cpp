@@ -1,5 +1,5 @@
 #include "QuaternionIntegratorNode.hpp"
-#include <geometry_msgs/Quaternion.h> // 用于订阅四元数微分
+#include <geometry_msgs/QuaternionStamped.h> // 用于订阅四元数微分
 #include <cmath> // For std::sqrt
 
 namespace quaternion_integrator {
@@ -16,7 +16,7 @@ QuaternionIntegratorNode::QuaternionIntegratorNode(const ros::NodeHandle& nh) : 
     nh_private.param<std::string>("quaternion_output_topic", quaternion_output_topic, "/imu/quaternion");
 
     /// 初始化订阅者，订阅四元数微分话题
-    sub_quaternion_derivative_ = nh_.subscribe(quaternion_derivative_input_topic, 10, &QuaternionIntegratorNode::imuProcessedCallback, this);
+    sub_quaternion_derivative_ = nh_.subscribe<geometry_msgs::QuaternionStamped>(quaternion_derivative_input_topic, 10, &QuaternionIntegratorNode::imuProcessedCallback, this);
 
     /// 初始化发布者，发布积分后的四元数话题
     pub_orientation_ = nh_.advertise<geometry_msgs::QuaternionStamped>(quaternion_output_topic, 10);
@@ -31,31 +31,30 @@ QuaternionIntegratorNode::QuaternionIntegratorNode(const ros::NodeHandle& nh) : 
     orientation_.z = 0.0;
 
     /// 初始化上次更新时间
-    last_update_time_ = ros::Time::now();
+    last_update_time_ = ros::Time(0); // Initialize with zero time to indicate no previous update
 
     ROS_INFO("[QuaternionIntegratorNode] Node initialized. Subscribing to %s and publishing to %s", quaternion_derivative_input_topic.c_str(), quaternion_output_topic.c_str());
 }
 
 /// @brief 四元数微分数据的回调函数实现
-void QuaternionIntegratorNode::imuProcessedCallback(const geometry_msgs::Quaternion::ConstPtr& msg) {
-    /// 获取当前时间
-    ros::Time current_time = ros::Time::now();
+void QuaternionIntegratorNode::imuProcessedCallback(const geometry_msgs::QuaternionStamped::ConstPtr& msg) {
+    /// 获取当前消息的时间戳
+    ros::Time current_time = msg->header.stamp;
 
     /// 计算时间差 dt
-    if (last_update_time_.isZero()) { // 处理第一个消息
-        last_update_time_ = current_time;
-        return; // 第一个消息不进行积分
+    double dt = 0.0;
+    if (!last_update_time_.isZero()) { // Only calculate dt if it's not the first message
+        dt = (current_time - last_update_time_).toSec();
     }
-    double dt = (current_time - last_update_time_).toSec();
     last_update_time_ = current_time;
 
-    if (dt <= 0) { // 避免dt为零或负数
+    if (dt <= 0 && !last_update_time_.isZero()) { // Warn if dt is zero or negative for subsequent messages
         ROS_WARN_THROTTLE(1.0, "[QuaternionIntegratorNode] dt is zero or negative. Skipping integration.");
         return;
     }
 
     /// 获取四元数微分 (dq/dt)
-    geometry_msgs::Quaternion q_dot_msg = *msg;
+    geometry_msgs::Quaternion q_dot_msg = msg->quaternion;
 
     /// 执行四元数积分: q_new = q_old + dq/dt * dt
     /// 注意：这里是简单的欧拉积分，对于四元数积分，更精确的方法是使用指数映射

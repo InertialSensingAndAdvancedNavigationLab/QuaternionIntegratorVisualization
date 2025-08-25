@@ -11,8 +11,9 @@
 #define QUATERNION_INTEGRATOR_ANGULAR_VELOCITY_TO_QUATERNION_DERIVATIVE_NODE_HPP
 
 #include <ros/ros.h>
-#include <sensor_msgs/Imu.h> // 更改为Imu消息类型
+#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/PoseStamped.h>
 
 /**
  * @brief quaternion_integrator 命名空间
@@ -60,12 +61,25 @@ private:
      **/
     void angularVelocityCallback(const sensor_msgs::Imu::ConstPtr& msg);
 
+    /**
+     * @brief       姿态消息的回调函数
+     * @details     当接收到新的姿态消息时，此函数被调用。
+     *              它从消息中提取当前的姿态四元数并存储起来。
+     * @param       msg                             数据类型: const geometry_msgs::PoseStamped::ConstPtr&
+     * @details     指向接收到的姿态消息的常量共享指针。
+     **/
+    void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
     /// @brief ROS节点句柄：用于初始化节点、订阅和发布话题等
     ros::NodeHandle nh_;
     /// @brief 角速度订阅者：订阅输入的角速度话题
     ros::Subscriber sub_angular_velocity_;
+    /// @brief 姿态订阅者：订阅输入的姿态话题
+    ros::Subscriber sub_pose_;
     /// @brief 四元数微分发布者：发布计算出的四元数微分话题
     ros::Publisher pub_quaternion_derivative_;
+    /// @brief 当前姿态四元数
+    geometry_msgs::Quaternion current_orientation_;
 };
 
 } // namespace quaternion_integrator

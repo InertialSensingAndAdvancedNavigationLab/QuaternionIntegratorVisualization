@@ -76,6 +76,16 @@ private:
      **/
     void correctedImuCallback(const sensor_msgs::Imu::ConstPtr& msg);
 
+    /**
+     * @brief       定时发布TF变换和可视化消息的回调函数
+     * @details     此函数由ros::Timer定时调用，用于以固定频率发布TF变换、
+     *              姿态、RPY和可视化Marker消息，从而避免TF重复数据警告。
+     *
+     * @param       event                           数据类型: const ros::TimerEvent&
+     * @details     ROS计时器事件对象。
+     **/
+    void publishTfCallback(const ros::TimerEvent& event);
+
     /// @brief ROS节点句柄：用于初始化节点、订阅和发布话题等
     ros::NodeHandle nh_;
     /// @brief 积分后四元数订阅者
@@ -92,10 +102,11 @@ private:
     /// @brief TF广播器：用于发布坐标变换
     tf2_ros::TransformBroadcaster tf_broadcaster_;
 
-    /// @brief 存储最新的积分后四元数
-    geometry_msgs::Quaternion latest_quaternion_;
-    /// @brief 存储最新的积分后四元数的时间戳
-    ros::Time latest_quaternion_stamp_;
+    /// @brief TF发布定时器
+    ros::Timer tf_publish_timer_;
+
+    /// @brief 存储最新的积分后四元数消息
+    geometry_msgs::QuaternionStamped latest_integrated_quaternion_msg_;
     /// @brief 存储最新的校正后IMU数据
     sensor_msgs::Imu latest_imu_;
 

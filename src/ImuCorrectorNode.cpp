@@ -100,6 +100,7 @@ void ImuCorrectorNode::imuRawCallback(const sensor_msgs::Imu::ConstPtr& msg) {
 
     /// 打印四元数、RPY和旋转矩阵到控制台
     ROS_INFO_STREAM("--- IMU Data ---");
+    ROS_INFO_STREAM("Raw Orientation w from bag: " << msg->orientation.w);
     ROS_INFO_STREAM("Quaternion: [" << q.x() << ", " << q.y() << ", " << q.z() << ", " << q.w() << "]");
     ROS_INFO_STREAM("RPY (rad): [" << roll << ", " << pitch << ", " << yaw << "]");
     ROS_INFO_STREAM("RPY (deg): [" << roll * 180.0 / M_PI << ", " << pitch * 180.0 / M_PI << ", " << yaw * 180.0 / M_PI << "]");
